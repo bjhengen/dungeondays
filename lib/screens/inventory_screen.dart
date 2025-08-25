@@ -248,7 +248,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         const SizedBox(height: 12),
         
-        // Equipment layout (2x3 grid + weapon/shield)
+        // Equipment layout (2x3 grid + weapon/shield/bow)
         Row(
           children: [
             // Left side
@@ -266,7 +266,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             
             const SizedBox(width: 16),
             
-            // Center (weapon)
+            // Center (weapon/shield)
             Column(
               children: [
                 _buildEquipmentSlot('weapon', 'Weapon', Icons.radio_button_unchecked, isLarge: true),
@@ -277,18 +277,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
             
             const SizedBox(width: 16),
             
-            // Right side
+            // Right side (ranged + accessories)
             Expanded(
               child: Column(
                 children: [
+                  _buildEquipmentSlot('bow', 'Bow', Icons.sports_martial_arts),
+                  const SizedBox(height: 8),
+                  _buildEquipmentSlot('arrows', 'Arrows', Icons.arrow_forward),
+                  const SizedBox(height: 8),
                   _buildEquipmentSlot('amulet', 'Neck', Icons.circle),
-                  const SizedBox(height: 8),
-                  _buildEquipmentSlot('ring1', 'Ring 1', Icons.circle_outlined),
-                  const SizedBox(height: 8),
-                  _buildEquipmentSlot('ring2', 'Ring 2', Icons.circle_outlined),
                 ],
               ),
             ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Ring slots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildEquipmentSlot('ring1', 'Ring 1', Icons.circle_outlined),
+            const SizedBox(width: 16),
+            _buildEquipmentSlot('ring2', 'Ring 2', Icons.circle_outlined),
           ],
         ),
         
@@ -337,7 +349,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          item.name.length > 10 ? '${item.name.substring(0, 10)}...' : item.name,
+                          item.displayName.length > 10 ? '${item.displayName.substring(0, 10)}...' : item.displayName,
                           style: TextStyle(
                             color: _getRarityColor(item.rarity),
                             fontSize: 8,
@@ -403,7 +415,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (item.isWeapon || item.isArmor || item.type == ItemType.ring || item.type == ItemType.amulet)
+            if (item.isWeapon || item.isArmor || item.type == ItemType.ring || item.type == ItemType.amulet || item.type == ItemType.bow || item.type == ItemType.arrows)
               ElevatedButton(
                 onPressed: () => _equipItem(item),
                 style: ElevatedButton.styleFrom(
@@ -443,6 +455,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case ItemType.shield:
         slotName = 'shield';
         break;
+      case ItemType.bow:
+        slotName = 'bow';
+        break;
+      case ItemType.arrows:
+        slotName = 'arrows';
+        break;
       case ItemType.ring:
         // Try ring1 first, then ring2
         if (widget.player.equipment['ring1'] == null) {
@@ -476,7 +494,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       widget.onPlayerUpdate(widget.player);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Equipped ${item.name}')),
+        SnackBar(content: Text('Equipped ${item.displayName}')),
       );
     }
   }
@@ -514,7 +532,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       widget.onPlayerUpdate(widget.player);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Used ${item.name}')),
+        SnackBar(content: Text('Used ${item.displayName}')),
       );
     }
   }
@@ -525,7 +543,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.black87,
-          title: Text(item.name, style: TextStyle(color: _getRarityColor(item.rarity))),
+          title: Text(item.displayName, style: TextStyle(color: _getRarityColor(item.rarity))),
           content: Text(item.description, style: const TextStyle(color: Colors.white, fontFamily: 'monospace')),
           actions: [
             TextButton(
@@ -551,6 +569,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
         case 'weapon': return item.type == ItemType.weapon;
         case 'armor': return item.type == ItemType.armor;
         case 'shield': return item.type == ItemType.shield;
+        case 'bow': return item.type == ItemType.bow;
+        case 'arrows': return item.type == ItemType.arrows;
         case 'ring1':
         case 'ring2': 
           return item.type == ItemType.ring;
@@ -581,7 +601,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 final item = availableItems[index];
                 return ListTile(
                   leading: Icon(_getItemIcon(item.type), color: _getRarityColor(item.rarity)),
-                  title: Text(item.name, style: TextStyle(color: _getRarityColor(item.rarity), fontFamily: 'monospace')),
+                  title: Text(item.displayName, style: TextStyle(color: _getRarityColor(item.rarity), fontFamily: 'monospace')),
                   subtitle: Text(item.description, style: const TextStyle(color: Colors.white70, fontSize: 10, fontFamily: 'monospace')),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -610,7 +630,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       widget.onPlayerUpdate(widget.player);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unequipped ${item.name}')),
+        SnackBar(content: Text('Unequipped ${item.displayName}')),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -665,6 +685,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
       case ItemType.weapon: return Icons.radio_button_unchecked;
       case ItemType.armor: return Icons.security;
       case ItemType.shield: return Icons.shield;
+      case ItemType.bow: return Icons.sports_martial_arts;
+      case ItemType.arrows: return Icons.arrow_forward;
       case ItemType.potion: return Icons.local_drink;
       case ItemType.food: return Icons.restaurant;
       case ItemType.ring: return Icons.circle_outlined;

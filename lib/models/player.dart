@@ -39,6 +39,9 @@ class Player {
   
   Map<String, int> skills;
   
+  // Active spell effects (effect_name -> expiry_time_in_seconds)
+  Map<String, int> activeEffects;
+  
   // Current location and world position
   String currentLocation;
   int worldX;
@@ -61,8 +64,8 @@ class Player {
     this.maxMana = 50,
     this.hunger = 100,
     this.maxHunger = 100,
-    this.silverCoins = 50,
-    this.goldCoins = 0,
+    this.silverCoins = 0,
+    this.goldCoins = 1000,
     this.maxInventorySlots = 20,
     this.currentLocation = 'Starting Village',
     this.worldX = 0,
@@ -79,6 +82,8 @@ class Player {
       'ring1': null,
       'ring2': null,
       'amulet': null,
+      'bow': null,
+      'arrows': null,
     },
     inventory = [],
     guildReputation = {for (var guild in GuildType.values) guild: 0},
@@ -91,7 +96,8 @@ class Player {
       'lockpicking': 0,
       'stealth': 0,
       'trading': 0,
-    };
+    },
+    activeEffects = {};
 
   bool get isGood => alignment == CharacterAlignment.lawfulGood || 
                      alignment == CharacterAlignment.neutralGood || 
@@ -177,6 +183,34 @@ class Player {
     currentHp = (currentHp + amount).clamp(0, maxHp);
   }
   
+  // Active effects management
+  void addActiveEffect(String effectName, int durationInSeconds) {
+    final currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    activeEffects[effectName] = currentTime + durationInSeconds;
+  }
+  
+  bool hasActiveEffect(String effectName) {
+    final currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final expiryTime = activeEffects[effectName];
+    if (expiryTime == null) return false;
+    
+    if (currentTime >= expiryTime) {
+      activeEffects.remove(effectName);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  void clearExpiredEffects() {
+    final currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    activeEffects.removeWhere((effect, expiryTime) => currentTime >= expiryTime);
+  }
+  
+  int get visionBonus {
+    return hasActiveEffect('light') ? 3 : 0; // +3 squares of vision when light is active
+  }
+  
   Map<String, dynamic> toJson() => {
     'name': name,
     'gender': gender,
@@ -205,6 +239,7 @@ class Player {
     'knownSpells': knownSpells,
     'spellSchoolLevels': spellSchoolLevels.map((k, v) => MapEntry(k.index, v)),
     'skills': skills,
+    'activeEffects': activeEffects,
     'currentLocation': currentLocation,
     'worldX': worldX,
     'worldY': worldY,
@@ -264,6 +299,7 @@ class Player {
     }
     
     player.skills = Map<String, int>.from(json['skills'] ?? {});
+    player.activeEffects = Map<String, int>.from(json['activeEffects'] ?? {});
     
     return player;
   }

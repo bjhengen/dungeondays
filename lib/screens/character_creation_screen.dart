@@ -107,12 +107,52 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
       player.addToInventory(item);
     }
 
+    // Give starting spells based on class
+    _giveStartingSpells(player);
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => GameScreen(player: player),
       ),
     );
+  }
+
+  void _giveStartingSpells(Player player) {
+    switch (player.characterClass) {
+      case CharacterClass.wizard:
+        player.knownSpells.addAll([
+          'magic_missile',
+          'light',
+          'detect_magic',
+        ]);
+        player.spellSchoolLevels[SpellSchool.evocation] = 1;
+        player.spellSchoolLevels[SpellSchool.divination] = 1;
+        break;
+      case CharacterClass.cleric:
+        player.knownSpells.addAll([
+          'cure_wounds',
+          'bless',
+        ]);
+        player.spellSchoolLevels[SpellSchool.conjuration] = 1;
+        player.spellSchoolLevels[SpellSchool.enchantment] = 1;
+        break;
+      case CharacterClass.paladin:
+        player.knownSpells.addAll([
+          'cure_wounds',
+        ]);
+        player.spellSchoolLevels[SpellSchool.conjuration] = 1;
+        break;
+      case CharacterClass.warrior:
+        // Warriors get no starting spells
+        break;
+      case CharacterClass.thief:
+        player.knownSpells.addAll([
+          'light',
+        ]);
+        player.spellSchoolLevels[SpellSchool.evocation] = 1;
+        break;
+    }
   }
 
   @override

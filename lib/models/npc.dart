@@ -32,6 +32,13 @@ class NPC {
   int worldY;
   String currentLocation;
   
+  // Movement and respawning data
+  int lastDeathDay;
+  int originalTownX;
+  int originalTownY;
+  int turnsSinceLastMove;
+  int movementTimer; // Random 1-3 turn movement interval
+  
   NPC({
     required this.id,
     required this.name,
@@ -53,12 +60,20 @@ class NPC {
     this.worldX = 0,
     this.worldY = 0,
     this.currentLocation = '',
+    this.lastDeathDay = 0,
+    int? originalTownX,
+    int? originalTownY,
+    this.turnsSinceLastMove = 0,
+    int? movementTimer,
   }) : 
     baseStats = baseStats ?? Stats(strength: 10 + level, constitution: 10 + level, intelligence: 10 + level),
     maxHp = maxHp ?? (50 + (level * 10)),
     currentHp = maxHp ?? (50 + (level * 10)),
     maxMana = maxMana ?? (25 + (level * 5)),
     currentMana = maxMana ?? (25 + (level * 5)),
+    originalTownX = originalTownX ?? townX,
+    originalTownY = originalTownY ?? townY,
+    movementTimer = movementTimer ?? (1 + (level % 3)), // 1-3 turns based on level
     equipment = {
       'weapon': null,
       'armor': null,
@@ -130,6 +145,11 @@ class NPC {
     'worldX': worldX,
     'worldY': worldY,
     'currentLocation': currentLocation,
+    'lastDeathDay': lastDeathDay,
+    'originalTownX': originalTownX,
+    'originalTownY': originalTownY,
+    'turnsSinceLastMove': turnsSinceLastMove,
+    'movementTimer': movementTimer,
   };
 
   factory NPC.fromJson(Map<String, dynamic> json) {
@@ -158,6 +178,11 @@ class NPC {
       worldX: json['worldX'] ?? 0,
       worldY: json['worldY'] ?? 0,
       currentLocation: json['currentLocation'] ?? '',
+      lastDeathDay: json['lastDeathDay'] ?? 0,
+      originalTownX: json['originalTownX'],
+      originalTownY: json['originalTownY'],
+      turnsSinceLastMove: json['turnsSinceLastMove'] ?? 0,
+      movementTimer: json['movementTimer'],
     );
     
     // Restore current HP/MP

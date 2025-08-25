@@ -19,13 +19,22 @@ class GameTime {
     this.weatherDuration = 0,
   });
 
-  bool get isDaylight => hour >= 6 && hour < 20; // 6 AM to 8 PM
+  bool get isDaylight => hour >= 6 && hour < 22; // 6 AM to 10 PM (8 hours darkness)
   bool get isNight => !isDaylight;
   
-  int get visibilityRange {
-    if (isDaylight) return 5; // Extra square of visibility during day
-    if (weather == Weather.rain || weather == Weather.snow) return 1;
-    return 1; // Night visibility reduced to player +1
+  int get visibilityRange => getVisibilityRange();
+  
+  int getVisibilityRange({int visionBonus = 0}) {
+    int baseRange;
+    if (isDaylight) {
+      baseRange = 5; // Extra square of visibility during day
+    } else if (weather == Weather.rain || weather == Weather.snow) {
+      baseRange = 1;
+    } else {
+      baseRange = 1; // Night visibility reduced to player +1
+    }
+    
+    return baseRange + visionBonus;
   }
   
   void advanceTurn() {

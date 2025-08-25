@@ -3,6 +3,7 @@ import '../models/player.dart';
 import '../models/item.dart';
 import '../models/town.dart';
 import '../models/enums.dart';
+import '../models/stats.dart';
 import '../utils/item_generator.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _ShopScreenState extends State<ShopScreen> {
         widget.onPlayerUpdate(widget.player);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Purchased ${item.name} for ${item.value} silver')),
+          SnackBar(content: Text('Purchased ${item.displayName} for ${item.value} silver')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,7 +102,7 @@ class _ShopScreenState extends State<ShopScreen> {
     widget.onPlayerUpdate(widget.player);
     
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sold ${item.name} for $sellPrice silver')),
+      SnackBar(content: Text('Sold ${item.displayName} for $sellPrice silver')),
     );
   }
 
@@ -287,6 +288,8 @@ class _ShopScreenState extends State<ShopScreen> {
                   fontFamily: 'monospace',
                 ),
               ),
+            if (action == 'BUY' && _isEquipment(item))
+              _buildStatComparison(item),
           ],
         ),
         trailing: SizedBox(
@@ -357,5 +360,110 @@ class _ShopScreenState extends State<ShopScreen> {
     if (stats.alertness > 0) modifiers.add('+${stats.alertness} ALERT');
     
     return modifiers.join(', ');
+  }
+
+  bool _isEquipment(Item item) {
+    return item.type == ItemType.weapon || 
+           item.type == ItemType.armor || 
+           item.type == ItemType.shield;
+  }
+
+  Widget _buildStatComparison(Item item) {
+    final currentItem = _getCurrentlyEquippedItem(item);
+    if (currentItem == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          'No ${item.type.name} equipped',
+          style: const TextStyle(
+            color: Colors.blue,
+            fontSize: 10,
+            fontStyle: FontStyle.italic,
+            fontFamily: 'monospace',
+          ),
+        ),
+      );
+    }
+
+    final comparison = _getStatComparison(currentItem, item);
+    if (comparison.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          'Similar to current ${item.type.name}',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 10,
+            fontFamily: 'monospace',
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        comparison,
+        style: const TextStyle(
+          color: Colors.cyan,
+          fontSize: 10,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
+  }
+
+  Item? _getCurrentlyEquippedItem(Item shopItem) {
+    switch (shopItem.type) {
+      case ItemType.weapon:
+        return widget.player.equipment['weapon'];
+      case ItemType.armor:
+        return widget.player.equipment['armor'];
+      case ItemType.shield:
+        return widget.player.equipment['shield'];
+      default:
+        return null;
+    }
+  }
+
+  String _getStatComparison(Item current, Item shop) {
+    if (current.statModifiers == null && shop.statModifiers == null) {
+      return '';
+    }
+
+    final currentStats = current.statModifiers ?? Stats();
+    final shopStats = shop.statModifiers ?? Stats();
+    
+    final differences = <String>[];
+
+    final strDiff = shopStats.strength - currentStats.strength;
+    final intDiff = shopStats.intelligence - currentStats.intelligence;
+    final wisDiff = shopStats.wisdom - currentStats.wisdom;
+    final dexDiff = shopStats.dexterity - currentStats.dexterity;
+    final conDiff = shopStats.constitution - currentStats.constitution;
+    final chaDiff = shopStats.charisma - currentStats.charisma;
+    final alertDiff = shopStats.alertness - currentStats.alertness;
+
+    void addDifference(String stat, int diff) {
+      if (diff > 0) {
+        differences.add('+$diff $stat');
+      } else if (diff < 0) {
+        differences.add('$diff $stat');
+      }
+    }
+
+    addDifference('STR', strDiff);
+    addDifference('INT', intDiff);
+    addDifference('WIS', wisDiff);
+    addDifference('DEX', dexDiff);
+    addDifference('CON', conDiff);
+    addDifference('CHA', chaDiff);
+    addDifference('ALERT', alertDiff);
+
+    if (differences.isEmpty) {
+      return '';
+    }
+
+    return 'vs current: ${differences.join(', ')}';
   }
 }

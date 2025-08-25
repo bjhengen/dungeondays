@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../models/world.dart';
 import '../models/enums.dart';
+import '../models/spell.dart';
+import '../models/item.dart';
+import '../models/town.dart';
 import '../widgets/ascii_display.dart';
 import '../widgets/player_stats_bar.dart';
 import '../services/save_service.dart';
 import '../services/world_generator.dart';
+import '../services/spell_service.dart';
+import '../widgets/item_selection_dialog.dart';
+import '../services/npc_movement_service.dart';
 import 'town_view_screen.dart';
 import 'inventory_screen.dart';
+import 'spellbook_screen.dart';
 
 class GameScreen extends StatefulWidget {
   final Player player;
@@ -429,6 +436,15 @@ class _GameScreenState extends State<GameScreen> {
   void _advanceTurn() {
     _gameTime.advanceTurn();
     
+    // Process NPC movement and respawning for all towns
+    final townLayouts = _world.locations.values
+        .map((location) => _world.getTownLayout(location.id))
+        .where((layout) => layout != null)
+        .cast<TownLayout>()
+        .toList();
+    
+    NPCMovementService.processTurn(_gameTime, townLayouts, _player);
+    
     // Reduce hunger slightly each turn
     if (_player.hunger > 0) {
       _player.hunger = (_player.hunger - 1).clamp(0, _player.maxHunger);
@@ -469,6 +485,7 @@ class _GameScreenState extends State<GameScreen> {
               goldCoins: _player.goldCoins,
               onMenuPressed: _showGameMenu,
               onInventoryPressed: _showInventory,
+              onSpellbookPressed: _showSpellbook,
               onMapPressed: _showMap,
             ),
             Expanded(
@@ -479,7 +496,7 @@ class _GameScreenState extends State<GameScreen> {
                     grid: _worldGrid,
                     playerX: _playerX,
                     playerY: _playerY,
-                    visibilityRange: _gameTime.visibilityRange,
+                    visibilityRange: _gameTime.getVisibilityRange(visionBonus: _player.visionBonus),
                     colorMap: _colorMap,
                     backgroundColor: _gameTime.isDaylight ? Colors.white : Colors.black,
                   ),
@@ -777,6 +794,100 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ),
     );
+  }
+
+  void _showSpellbook() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SpellbookScreen(
+          player: _player,
+          castingContext: 'exploration',
+          onSpellCast: (spell) => _castExplorationSpell(spell),
+          onPlayerUpdate: (updatedPlayer) {
+            setState(() {
+              _player = updatedPlayer;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  void _castExplorationSpell(Spell spell, {Item? targetItem}) async {
+    final spellEffect = SpellService.castExplorationSpell(spell, _player, targetItem: targetItem);
+    
+    // Special handling for identify spell
+    if (spellEffect.message == 'SELECT_ITEM_TO_IDENTIFY') {
+      final unidentifiedItems = _player.inventory
+          .where((item) => !item.identified)
+          .toList();
+      
+      if (unidentifiedItems.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'You have no unidentified items to examine.',
+              style: TextStyle(fontFamily: 'monospace'),
+            ),
+            backgroundColor: Colors.red.shade800,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
+      final selectedItem = await showDialog<Item>(
+        context: context,
+        builder: (context) => ItemSelectionDialog(
+          items: unidentifiedItems,
+          title: 'Select Item to Identify',
+          emptyMessage: 'No unidentified items found.',
+          onItemSelected: (item) => Navigator.of(context).pop(item),
+        ),
+      );
+      
+      if (selectedItem != null) {
+        // Cast identify again with the selected item
+        _castExplorationSpell(spell, targetItem: selectedItem);
+      }
+      return;
+    }
+    
+    // Show spell effect message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          spellEffect.message,
+          style: const TextStyle(fontFamily: 'monospace'),
+        ),
+        backgroundColor: spellEffect.success ? Colors.deepPurple.shade800 : Colors.red.shade800,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    
+    if (spellEffect.success) {
+      // Handle healing
+      if (spellEffect.healing != null) {
+        setState(() {
+          // Player already updated in spell service
+        });
+      }
+      
+      // Handle buffs (would need proper buff system)
+      if (spellEffect.buffs != null) {
+        // For now, just show the message
+        // TODO: Implement temporary buff system
+      }
+      
+      // Advance time for exploration spells (advance by 3 turns = 30 minutes)
+      for (int i = 0; i < 3; i++) {
+        _gameTime.advanceTurn();
+      }
+      setState(() {
+        // Refresh UI after spell casting
+      });
+    }
   }
 
   void _showMap() {

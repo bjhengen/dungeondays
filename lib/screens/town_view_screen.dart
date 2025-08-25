@@ -12,6 +12,7 @@ import 'guild_screen.dart';
 import 'inventory_screen.dart';
 import 'combat_screen.dart';
 import 'upgrade_points_screen.dart';
+import '../services/npc_movement_service.dart';
 
 class TownViewScreen extends StatefulWidget {
   final Player player;
@@ -123,6 +124,7 @@ class _TownViewScreenState extends State<TownViewScreen> {
       
       _checkBuildingEntry(newX, newY);
       _checkExit(newX, newY);
+      _processTurn();
     }
   }
 
@@ -141,6 +143,14 @@ class _TownViewScreenState extends State<TownViewScreen> {
     if (x == widget.townLayout.entranceX && y == widget.townLayout.entranceY) {
       _showExitDialog();
     }
+  }
+
+  void _processTurn() {
+    // Advance game time (turns are handled at world level, but we can trigger NPC movement)
+    NPCMovementService.processTurn(widget.gameTime, [widget.townLayout], widget.player);
+    
+    // Refresh the UI to show any NPC movements
+    setState(() {});
   }
 
   void _showBuildingDialog(Building building) {
@@ -538,8 +548,9 @@ class _TownViewScreenState extends State<TownViewScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('You have defeated ${npc.name}!')),
               );
-              // Remove defeated NPC from town
-              widget.townLayout.npcs.remove(npc.id);
+              // Mark NPC as dead using the movement service
+              NPCMovementService.markNPCDead(npc, widget.gameTime);
+              // Clear NPC from town grid
               widget.townLayout.grid[npc.townY][npc.townX] = ' ';
             }
           },

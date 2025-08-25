@@ -15,7 +15,7 @@ enum SpellSchool {
 
 enum ItemType {
   weapon, armor, shield, potion, scroll, 
-  ring, amulet, food, misc, container
+  ring, amulet, food, misc, container, bow, arrows
 }
 
 enum ItemRarity {

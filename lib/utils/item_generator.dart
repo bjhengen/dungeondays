@@ -26,6 +26,16 @@ class ItemGenerator {
     'Pickled Vegetables', 'Ale', 'Cider', 'Milk', 'Eggs'
   ];
 
+  static const List<String> _bowNames = [
+    'Short Bow', 'Long Bow', 'Composite Bow', 'Elven Bow', 'War Bow',
+    'Hunter\'s Bow', 'Yew Bow', 'Recurve Bow', 'Crossbow', 'Heavy Crossbow'
+  ];
+
+  static const List<String> _arrowNames = [
+    'Iron Arrows', 'Steel Arrows', 'Broadhead Arrows', 'Bodkin Arrows', 
+    'Silver Arrows', 'Enchanted Arrows', 'Fire Arrows', 'Barbed Arrows'
+  ];
+
   static Item generateStartingWeapon(CharacterClass characterClass) {
     String weaponName;
     int damage = 5;
@@ -141,23 +151,109 @@ class ItemGenerator {
     switch (type) {
       case ItemType.weapon:
         name = _weaponNames[random.nextInt(_weaponNames.length)];
-        final bonus = 1 + rarity.index;
-        modifiers = Stats(strength: bonus);
-        baseValue = 20 + (rarity.index * 15);
+        final baseBonus = 2 + (rarity.index * 2);
+        final variance = random.nextInt(3) - 1; // -1 to +1 variance
+        
+        // Different weapon types have different stat focuses
+        Stats weaponStats;
+        String statDescription;
+        
+        if (name.contains('Sword') || name.contains('Blade') || name.contains('Axe')) {
+          // Strength-focused weapons
+          weaponStats = Stats(
+            strength: baseBonus + variance + 2,
+            dexterity: (baseBonus ~/ 2) + variance,
+          );
+          statDescription = 'STR+${weaponStats.strength}, DEX+${weaponStats.dexterity}';
+        } else if (name.contains('Dagger') || name.contains('Rapier')) {
+          // Dexterity-focused weapons  
+          weaponStats = Stats(
+            strength: (baseBonus ~/ 2) + variance,
+            dexterity: baseBonus + variance + 2,
+          );
+          statDescription = 'STR+${weaponStats.strength}, DEX+${weaponStats.dexterity}';
+        } else if (name.contains('Staff') || name.contains('Wand')) {
+          // Intelligence-focused weapons
+          weaponStats = Stats(
+            strength: baseBonus + variance,
+            intelligence: baseBonus + variance + 2,
+            wisdom: (baseBonus ~/ 2) + variance,
+          );
+          statDescription = 'STR+${weaponStats.strength}, INT+${weaponStats.intelligence}, WIS+${weaponStats.wisdom}';
+        } else if (name.contains('Hammer') || name.contains('Mace')) {
+          // Strength and constitution focused
+          weaponStats = Stats(
+            strength: baseBonus + variance + 1,
+            constitution: baseBonus + variance + 1,
+          );
+          statDescription = 'STR+${weaponStats.strength}, CON+${weaponStats.constitution}';
+        } else {
+          // Balanced weapons
+          weaponStats = Stats(
+            strength: baseBonus + variance + 1,
+            dexterity: baseBonus + variance,
+            constitution: (baseBonus ~/ 2) + variance,
+          );
+          statDescription = 'STR+${weaponStats.strength}, DEX+${weaponStats.dexterity}, CON+${weaponStats.constitution}';
+        }
+        
+        modifiers = weaponStats;
+        final totalStats = weaponStats.strength + weaponStats.dexterity + weaponStats.constitution + weaponStats.intelligence + weaponStats.wisdom + weaponStats.charisma + weaponStats.alertness - 70; // Subtract baseline values
+        baseValue = 20 + (rarity.index * 15) + (totalStats * 2);
         
         description = isShopItem 
-            ? 'A $name of ${rarity.name} quality. Attack bonus: +$bonus'
+            ? 'A $name of ${rarity.name} quality. $statDescription'
             : 'A weapon that may have magical properties.';
         break;
         
       case ItemType.armor:
         name = _armorNames[random.nextInt(_armorNames.length)];
-        final bonus = 1 + rarity.index;
-        modifiers = Stats(constitution: bonus);
-        baseValue = 25 + (rarity.index * 20);
+        final baseBonus = 2 + (rarity.index * 2);
+        final variance = random.nextInt(3) - 1; // -1 to +1 variance
+        
+        // Different armor types have different stat focuses
+        Stats armorStats;
+        String statDescription;
+        
+        if (name.contains('Plate') || name.contains('Chain')) {
+          // Heavy armor - high defense, dexterity penalty
+          armorStats = Stats(
+            constitution: baseBonus + variance + 3,
+            strength: (baseBonus ~/ 2) + variance + 1,
+            dexterity: 10 + variance - 1, // Slight dexterity penalty
+          );
+          statDescription = 'CON+${armorStats.constitution - 10}, STR+${armorStats.strength - 10}, DEX${armorStats.dexterity - 10}';
+        } else if (name.contains('Leather') || name.contains('Studded')) {
+          // Light armor - balanced defense and mobility
+          armorStats = Stats(
+            constitution: baseBonus + variance + 1,
+            dexterity: baseBonus + variance + 1,
+          );
+          statDescription = 'CON+${armorStats.constitution - 10}, DEX+${armorStats.dexterity - 10}';
+        } else if (name.contains('Robes') || name.contains('Cloth')) {
+          // Mage armor - magical bonuses
+          armorStats = Stats(
+            constitution: baseBonus + variance,
+            intelligence: baseBonus + variance + 2,
+            wisdom: (baseBonus ~/ 2) + variance + 1,
+          );
+          statDescription = 'CON+${armorStats.constitution - 10}, INT+${armorStats.intelligence - 10}, WIS+${armorStats.wisdom - 10}';
+        } else {
+          // Medium armor - balanced
+          armorStats = Stats(
+            constitution: baseBonus + variance + 2,
+            dexterity: (baseBonus ~/ 2) + variance,
+            strength: (baseBonus ~/ 2) + variance,
+          );
+          statDescription = 'CON+${armorStats.constitution - 10}, DEX+${armorStats.dexterity - 10}, STR+${armorStats.strength - 10}';
+        }
+        
+        modifiers = armorStats;
+        final totalStats = armorStats.strength + armorStats.dexterity + armorStats.constitution + armorStats.intelligence + armorStats.wisdom + armorStats.charisma + armorStats.alertness - 70;
+        baseValue = 25 + (rarity.index * 20) + (totalStats * 2);
         
         description = isShopItem 
-            ? 'Protective $name of ${rarity.name} quality. Defense bonus: +$bonus'
+            ? 'Protective $name of ${rarity.name} quality. $statDescription'
             : 'Armor that may have protective enchantments.';
         break;
         
@@ -202,6 +298,28 @@ class ItemGenerator {
         } else {
           description = 'A scroll covered in mystical runes.';
         }
+        break;
+        
+      case ItemType.bow:
+        name = _bowNames[random.nextInt(_bowNames.length)];
+        final bonus = 2 + rarity.index; // Bows get slightly higher range bonus
+        modifiers = Stats(dexterity: bonus);
+        baseValue = 30 + (rarity.index * 20);
+        
+        description = isShopItem 
+            ? 'A $name of ${rarity.name} quality. Range bonus: +$bonus'
+            : 'A ranged weapon that may have magical properties.';
+        break;
+        
+      case ItemType.arrows:
+        name = _arrowNames[random.nextInt(_arrowNames.length)];
+        final bonus = 1 + rarity.index;
+        modifiers = Stats(strength: bonus); // Arrows add damage
+        baseValue = 5 + (rarity.index * 5);
+        
+        description = isShopItem 
+            ? '$name of ${rarity.name} quality. Damage bonus: +$bonus'
+            : 'Arrows that may have magical properties.';
         break;
         
       default:
@@ -350,11 +468,8 @@ class ItemGenerator {
     switch (guildType) {
       case GuildType.blacksmiths:
         for (int i = 0; i < itemCount; i++) {
-          if (random.nextBool()) {
-            items.add(generateRandomItem(ItemType.weapon, isShopItem: true));
-          } else {
-            items.add(generateRandomItem(ItemType.armor, isShopItem: true));
-          }
+          final itemTypes = [ItemType.weapon, ItemType.armor, ItemType.bow, ItemType.arrows];
+          items.add(generateRandomItem(itemTypes[random.nextInt(itemTypes.length)], isShopItem: true));
         }
         break;
       case GuildType.alchemists:

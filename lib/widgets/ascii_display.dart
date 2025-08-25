@@ -149,6 +149,7 @@ class GameUI extends StatelessWidget {
   final VoidCallback? onMenuPressed;
   final VoidCallback? onInventoryPressed;
   final VoidCallback? onMapPressed;
+  final VoidCallback? onSpellbookPressed;
   
   const GameUI({
     super.key,
@@ -169,13 +170,17 @@ class GameUI extends StatelessWidget {
     this.onMenuPressed,
     this.onInventoryPressed,
     this.onMapPressed,
+    this.onSpellbookPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Add extra bottom padding on mobile to avoid navigation conflicts
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 8.0;
+    
     return Container(
       color: Colors.black87,
-      padding: const EdgeInsets.all(8.0),
+      padding: EdgeInsets.fromLTRB(8.0, 8.0, 8.0, bottomPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -204,7 +209,7 @@ class GameUI extends StatelessWidget {
           const SizedBox(height: 4),
           _buildStatBar('HP', hp, maxHp, Colors.red),
           _buildStatBar('MP', mana, maxMana, Colors.blue),
-          _buildStatBar('Hunger', hunger, maxHunger, Colors.orange),
+          _buildHungerBar(hunger, maxHunger),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -239,14 +244,19 @@ class GameUI extends StatelessWidget {
                   fontFamily: 'monospace',
                 ),
               ),
-              Row(
-                children: [
-                  _buildUIButton('Menu', onMenuPressed),
-                  const SizedBox(width: 8),
-                  _buildUIButton('Inv', onInventoryPressed),
-                  const SizedBox(width: 8),
-                  _buildUIButton('Map', onMapPressed),
-                ],
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildUIButton('Menu', onMenuPressed),
+                    const SizedBox(width: 4),
+                    _buildUIButton('Inv', onInventoryPressed),
+                    const SizedBox(width: 4),
+                    _buildUIButton('Spells', onSpellbookPressed),
+                    const SizedBox(width: 4),
+                    _buildUIButton('Map', onMapPressed),
+                  ],
+                ),
               ),
             ],
           ),
@@ -308,10 +318,89 @@ class GameUI extends StatelessWidget {
     );
   }
 
+  Widget _buildHungerBar(int hunger, int maxHunger) {
+    final percentage = maxHunger > 0 ? hunger / maxHunger : 0.0;
+    
+    // Determine hunger status and colors
+    Color barColor;
+    Color textColor;
+    String warning = '';
+    
+    if (percentage <= 0.1) { // 10% or less - critical
+      barColor = Colors.red.shade700;
+      textColor = Colors.red;
+      warning = ' ⚠ STARVING!';
+    } else if (percentage <= 0.3) { // 30% or less - very hungry
+      barColor = Colors.orange.shade700;
+      textColor = Colors.orange;
+      warning = ' ⚠ Very Hungry';
+    } else if (percentage <= 0.5) { // 50% or less - hungry
+      barColor = Colors.yellow.shade700;
+      textColor = Colors.yellow;
+      warning = ' Hungry';
+    } else {
+      barColor = Colors.green;
+      textColor = Colors.white70;
+      warning = '';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 50,
+            child: Text(
+              'Hunger',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 10,
+                fontFamily: 'monospace',
+                fontWeight: percentage <= 0.3 ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 12,
+              decoration: BoxDecoration(
+                border: Border.all(color: percentage <= 0.3 ? textColor : Colors.white24),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: FractionallySizedBox(
+                widthFactor: percentage,
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: barColor,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 50,
+            child: Text(
+              '$hunger/$maxHunger',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 10,
+                fontFamily: 'monospace',
+                fontWeight: percentage <= 0.3 ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildUIButton(String label, VoidCallback? onPressed) {
     return SizedBox(
-      width: 40,
-      height: 24,
+      width: 36,
+      height: 20,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -325,7 +414,7 @@ class GameUI extends StatelessWidget {
         child: Text(
           label,
           style: const TextStyle(
-            fontSize: 8,
+            fontSize: 7,
             fontWeight: FontWeight.bold,
             fontFamily: 'monospace',
           ),

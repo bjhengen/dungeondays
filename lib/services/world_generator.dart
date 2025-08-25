@@ -82,6 +82,9 @@ class WorldGenerator {
     
     // Initialize guild data
     _initializeGuilds(guilds);
+    
+    // Add roaming monsters to the wilderness
+    _generateWildernessMonsters(locations, npcs);
   }
   
   void _generateMajorCities(Map<String, Location> locations) {
@@ -478,6 +481,127 @@ class WorldGenerator {
           case 3: y--; break;
         }
       }
+    }
+  }
+  
+  void _generateWildernessMonsters(Map<String, Location> locations, Map<String, NPC> npcs) {
+    // Create 6-10 roaming monsters scattered across the wilderness
+    final monsterCount = 6 + _random.nextInt(5);
+    
+    for (int i = 0; i < monsterCount; i++) {
+      // Generate random world coordinates, avoiding towns
+      int x, y;
+      bool validPosition = false;
+      int attempts = 0;
+      
+      do {
+        x = 2 + _random.nextInt(WORLD_SIZE - 4);
+        y = 2 + _random.nextInt(WORLD_SIZE - 4);
+        
+        // Check if position is far enough from settlements
+        validPosition = true;
+        for (final location in locations.values) {
+          final distance = (location.worldX - x).abs() + (location.worldY - y).abs();
+          if (distance < 3) { // Must be at least 3 tiles away from settlements
+            validPosition = false;
+            break;
+          }
+        }
+        attempts++;
+      } while (!validPosition && attempts < 50);
+      
+      if (!validPosition) continue;
+      
+      // Create different types of monsters
+      final monsterTypes = ['hobgoblin', 'orc', 'bandit', 'wolf', 'spider'];
+      final monsterType = monsterTypes[_random.nextInt(monsterTypes.length)];
+      
+      final monster = _createWildernessMonster(monsterType, x, y);
+      npcs[monster.id] = monster;
+    }
+  }
+  
+  NPC _createWildernessMonster(String type, int worldX, int worldY) {
+    final id = '${type}_${_random.nextInt(10000)}';
+    
+    switch (type) {
+      case 'hobgoblin':
+        return NPC(
+          id: id,
+          name: 'Hobgoblin Warrior',
+          description: 'A fierce goblinoid warrior with crude armor and weapons.',
+          disposition: NPCDisposition.hostile,
+          dialogue: 'GRAAAH! Me smash you!',
+          level: 2 + _random.nextInt(3), // Level 2-4
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
+        
+      case 'orc':
+        return NPC(
+          id: id,
+          name: 'Orc Raider',
+          description: 'A brutal orc with scarred green skin and jagged weapons.',
+          disposition: NPCDisposition.hostile,
+          dialogue: 'Puny human! You die now!',
+          level: 3 + _random.nextInt(3), // Level 3-5
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
+        
+      case 'bandit':
+        return NPC(
+          id: id,
+          name: 'Highway Bandit',
+          description: 'A desperate outlaw who preys on travelers.',
+          disposition: NPCDisposition.hostile,
+          dialogue: 'Your coin or your life, traveler!',
+          level: 1 + _random.nextInt(3), // Level 1-3
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
+        
+      case 'wolf':
+        return NPC(
+          id: id,
+          name: 'Wild Wolf',
+          description: 'A fierce wolf with bared fangs and glowing eyes.',
+          disposition: NPCDisposition.hostile,
+          dialogue: '*Growls menacingly*',
+          level: 1 + _random.nextInt(2), // Level 1-2
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
+        
+      case 'spider':
+        return NPC(
+          id: id,
+          name: 'Giant Spider',
+          description: 'A massive arachnid with venomous fangs.',
+          disposition: NPCDisposition.hostile,
+          dialogue: '*Clicks mandibles threateningly*',
+          level: 2 + _random.nextInt(2), // Level 2-3
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
+        
+      default:
+        return NPC(
+          id: id,
+          name: 'Wilderness Creature',
+          description: 'A dangerous creature roaming the wilds.',
+          disposition: NPCDisposition.hostile,
+          dialogue: '*Makes threatening noises*',
+          level: 1 + _random.nextInt(3),
+          worldX: worldX,
+          worldY: worldY,
+          currentLocation: 'Wilderness',
+        );
     }
   }
 }

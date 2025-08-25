@@ -1,7 +1,13 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../models/town.dart';
 import '../models/enums.dart';
+import '../models/spell.dart';
+import '../models/item.dart';
+import '../models/stats.dart';
+import '../services/spell_service.dart';
+import '../widgets/item_selection_dialog.dart';
 
 class GuildScreen extends StatefulWidget {
   final Player player;
@@ -329,34 +335,459 @@ class _GuildScreenState extends State<GuildScreen> {
     _showServiceResult('Your $skillName skill has improved!');
   }
 
-  void _identifyItems() {
-    widget.player.spendMoney(10);
-    int identifiedCount = 0;
+  void _identifyItems() async {
+    final unidentifiedItems = widget.player.inventory
+        .where((item) => !item.identified)
+        .toList();
     
-    for (final item in widget.player.inventory) {
-      if (!item.identified) {
-        // In a full implementation, you'd set item.identified = true
-        identifiedCount++;
+    if (unidentifiedItems.isEmpty) {
+      _showServiceResult('No unidentified items found.');
+      return;
+    }
+
+    final selectedItem = await showDialog<Item>(
+      context: context,
+      builder: (context) => ItemSelectionDialog(
+        items: unidentifiedItems,
+        title: 'Select Item to Identify',
+        emptyMessage: 'No unidentified items found.',
+        onItemSelected: (item) => Navigator.of(context).pop(item),
+      ),
+    );
+
+    if (selectedItem != null) {
+      widget.player.spendMoney(10);
+      
+      // Create identified version of the item
+      final identifiedItem = Item(
+        id: selectedItem.id,
+        name: selectedItem.name,
+        description: selectedItem.description,
+        type: selectedItem.type,
+        rarity: selectedItem.rarity,
+        value: selectedItem.value,
+        identified: true, // Mark as identified
+        statModifiers: selectedItem.statModifiers,
+        specialEffects: selectedItem.specialEffects,
+        stackSize: selectedItem.stackSize,
+      );
+      
+      // Replace the item in player's inventory
+      final itemIndex = widget.player.inventory.indexOf(selectedItem);
+      if (itemIndex >= 0) {
+        widget.player.inventory[itemIndex] = identifiedItem;
+        
+        // If the item was equipped, update equipment
+        for (final slot in widget.player.equipment.keys) {
+          if (widget.player.equipment[slot] == selectedItem) {
+            widget.player.equipment[slot] = identifiedItem;
+            break;
+          }
+        }
+      }
+      
+      widget.onPlayerUpdate(widget.player);
+      
+      // Show identification results for the identified item
+      _showIdentificationResults(identifiedItem);
+    }
+  }
+
+  void _showIdentificationResults(Item item) {
+    String itemDetails = 'Item: ${item.displayName}\n';
+    itemDetails += 'Type: ${item.type.name.toUpperCase()}\n';
+    itemDetails += 'Rarity: ${item.rarity.name.toUpperCase()}\n';
+    itemDetails += 'Value: ${item.value} silver\n';
+    
+    if (item.statModifiers != null) {
+      final stats = item.statModifiers!;
+      itemDetails += '\nStat Bonuses:\n';
+      if (stats.strength > 0) itemDetails += '+${stats.strength} Strength\n';
+      if (stats.dexterity > 0) itemDetails += '+${stats.dexterity} Dexterity\n';
+      if (stats.intelligence > 0) itemDetails += '+${stats.intelligence} Intelligence\n';
+      if (stats.wisdom > 0) itemDetails += '+${stats.wisdom} Wisdom\n';
+      if (stats.constitution > 0) itemDetails += '+${stats.constitution} Constitution\n';
+      if (stats.charisma > 0) itemDetails += '+${stats.charisma} Charisma\n';
+    }
+    
+    if (item.specialEffects != null && item.specialEffects!.isNotEmpty) {
+      itemDetails += '\nSpecial Properties:\n';
+      item.specialEffects!.forEach((key, value) {
+        itemDetails += '$key: $value\n';
+      });
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
+        title: Text(
+          'Item Identified!',
+          style: TextStyle(
+            color: _getRarityColor(item.rarity),
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          itemDetails,
+          style: const TextStyle(
+            color: Colors.white,
+            fontFamily: 'monospace',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                color: Colors.amber,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getRarityColor(ItemRarity rarity) {
+    switch (rarity) {
+      case ItemRarity.common:
+        return Colors.white;
+      case ItemRarity.uncommon:
+        return Colors.green;
+      case ItemRarity.rare:
+        return Colors.blue;
+      case ItemRarity.epic:
+        return Colors.purple;
+      case ItemRarity.legendary:
+        return Colors.orange;
+    }
+  }
+
+  void _learnSpells() async {
+    final availableSpells = _getAvailableSpellsForLearning();
+    
+    if (availableSpells.isEmpty) {
+      _showServiceResult('You have already learned all spells available to your class and level.');
+      return;
+    }
+
+    final selectedSpell = await showDialog<Spell>(
+      context: context,
+      builder: (context) => _buildSpellLearningDialog(availableSpells),
+    );
+
+    if (selectedSpell != null) {
+      final cost = SpellService.getSpellLearningCost(selectedSpell);
+      if (widget.player.totalMoney >= cost) {
+        widget.player.spendMoney(cost);
+        widget.player.knownSpells.add(selectedSpell.id);
+        
+        // Increase spell school level
+        final currentLevel = widget.player.spellSchoolLevels[selectedSpell.school] ?? 0;
+        widget.player.spellSchoolLevels[selectedSpell.school] = currentLevel + 1;
+        
+        widget.onPlayerUpdate(widget.player);
+        _showServiceResult('You\'ve learned ${selectedSpell.name}!');
+      } else {
+        _showServiceResult('You don\'t have enough money to learn that spell. Cost: ${cost} silver');
+      }
+    }
+  }
+
+  List<Spell> _getAvailableSpellsForLearning() {
+    return SpellBook.allSpells.where((spell) {
+      // Not already known
+      if (widget.player.knownSpells.contains(spell.id)) return false;
+      
+      // Can be learned by this class
+      if (!SpellService.canLearnSpell(spell, widget.player)) return false;
+      
+      // Available at mage guild (all spells for now, could be restricted)
+      return true;
+    }).toList()..sort((a, b) => a.level.compareTo(b.level));
+  }
+
+  Widget _buildSpellLearningDialog(List<Spell> spells) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 500, maxWidth: 400),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade900,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.deepPurple.shade300),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Learn Spells',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: spells.length,
+                itemBuilder: (context, index) {
+                  final spell = spells[index];
+                  final cost = SpellService.getSpellLearningCost(spell);
+                  final canAfford = widget.player.totalMoney >= cost;
+                  
+                  return Card(
+                    color: Colors.black87,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(
+                        _getSchoolIcon(spell.school),
+                        color: _getSchoolColor(spell.school),
+                      ),
+                      title: Text(
+                        spell.name,
+                        style: TextStyle(
+                          color: canAfford ? Colors.white : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            spell.description,
+                            style: TextStyle(
+                              color: canAfford ? Colors.white70 : Colors.grey.shade600,
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'Level ${spell.level} • ${spell.manaCost} MP',
+                                style: TextStyle(
+                                  color: _getSchoolColor(spell.school),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Cost: ${cost}s',
+                                style: TextStyle(
+                                  color: canAfford ? Colors.amber : Colors.red,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      onTap: canAfford ? () => Navigator.of(context).pop(spell) : null,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getSchoolIcon(SpellSchool school) {
+    switch (school) {
+      case SpellSchool.evocation:
+        return Icons.flash_on;
+      case SpellSchool.enchantment:
+        return Icons.psychology;
+      case SpellSchool.necromancy:
+        return Icons.dark_mode;
+      case SpellSchool.divination:
+        return Icons.visibility;
+      case SpellSchool.illusion:
+        return Icons.blur_on;
+      case SpellSchool.conjuration:
+        return Icons.healing;
+      case SpellSchool.alchemy:
+        return Icons.science;
+      case SpellSchool.elemental:
+        return Icons.ac_unit;
+    }
+  }
+
+  Color _getSchoolColor(SpellSchool school) {
+    switch (school) {
+      case SpellSchool.evocation:
+        return Colors.orange;
+      case SpellSchool.enchantment:
+        return Colors.pink;
+      case SpellSchool.necromancy:
+        return Colors.purple.shade900;
+      case SpellSchool.divination:
+        return Colors.lightBlue;
+      case SpellSchool.illusion:
+        return Colors.indigo;
+      case SpellSchool.conjuration:
+        return Colors.green;
+      case SpellSchool.alchemy:
+        return Colors.amber;
+      case SpellSchool.elemental:
+        return Colors.cyan;
+    }
+  }
+
+  void _enchantItems() async {
+    // Check if player has enchantable items
+    final enchantableItems = widget.player.inventory
+        .where((item) => item.type == ItemType.weapon || 
+                       item.type == ItemType.armor || 
+                       item.type == ItemType.shield)
+        .toList();
+        
+    if (enchantableItems.isEmpty) {
+      _showServiceResult('You have no equipment that can be enchanted.');
+      return;
+    }
+    
+    // Let player select an item to enchant
+    final selectedItem = await showDialog<Item>(
+      context: context,
+      builder: (context) => ItemSelectionDialog(
+        items: enchantableItems,
+        title: 'Select Item to Enchant',
+        emptyMessage: 'No enchantable equipment found.',
+        onItemSelected: (item) => Navigator.of(context).pop(item),
+      ),
+    );
+    
+    if (selectedItem != null) {
+      if (!widget.player.canAfford(75)) {
+        _showServiceResult('You need 75 gold to enchant an item.');
+        return;
+      }
+      
+      widget.player.spendMoney(75);
+      _performEnchantment(selectedItem);
+      widget.onPlayerUpdate(widget.player);
+    }
+  }
+
+  void _performEnchantment(Item item) {
+    final random = Random();
+    
+    // Generate a random enchantment based on item type
+    Stats? bonusStats;
+    String enchantmentName;
+    String enchantmentDescription;
+    
+    switch (item.type) {
+      case ItemType.weapon:
+        // Weapon enchantments: damage, accuracy, special effects
+        final enchantments = [
+          ('Sharpness', Stats(strength: 3 + random.nextInt(5)), 'increases damage'),
+          ('Lightning', Stats(strength: 2, dexterity: 2), 'crackles with electricity'),
+          ('Frost', Stats(strength: 2, intelligence: 2), 'is covered in frost'),
+          ('Vampiric', Stats(strength: 1, constitution: 3), 'drains life from enemies'),
+        ];
+        final chosen = enchantments[random.nextInt(enchantments.length)];
+        enchantmentName = chosen.$1;
+        bonusStats = chosen.$2;
+        enchantmentDescription = chosen.$3;
+        break;
+        
+      case ItemType.armor:
+        // Armor enchantments: defense, resistance, utility
+        final enchantments = [
+          ('Protection', Stats(constitution: 3 + random.nextInt(5)), 'provides enhanced protection'),
+          ('Resistance', Stats(constitution: 2, wisdom: 2), 'resists magical damage'),
+          ('Agility', Stats(constitution: 2, dexterity: 2), 'enhances mobility'),
+          ('Fortitude', Stats(constitution: 3, strength: 1), 'bolsters endurance'),
+        ];
+        final chosen = enchantments[random.nextInt(enchantments.length)];
+        enchantmentName = chosen.$1;
+        bonusStats = chosen.$2;
+        enchantmentDescription = chosen.$3;
+        break;
+        
+      case ItemType.shield:
+        // Shield enchantments: defense, blocking, reflection
+        final enchantments = [
+          ('Warding', Stats(constitution: 4), 'deflects attacks'),
+          ('Reflection', Stats(constitution: 2, intelligence: 2), 'reflects magical attacks'),
+          ('Steadfast', Stats(constitution: 3, wisdom: 1), 'provides unwavering defense'),
+        ];
+        final chosen = enchantments[random.nextInt(enchantments.length)];
+        enchantmentName = chosen.$1;
+        bonusStats = chosen.$2;
+        enchantmentDescription = chosen.$3;
+        break;
+        
+      default:
+        bonusStats = Stats(strength: 1, constitution: 1);
+        enchantmentName = 'Minor';
+        enchantmentDescription = 'glows faintly';
+    }
+    
+    // Create enhanced item
+    final enhancedStats = item.statModifiers != null 
+        ? item.statModifiers!.add(bonusStats) 
+        : bonusStats;
+    
+    final enhancedItem = Item(
+      id: '${item.id}_enchanted_${random.nextInt(1000)}',
+      name: '$enchantmentName ${item.name}',
+      description: '${item.description} This item $enchantmentDescription.',
+      type: item.type,
+      rarity: item.rarity == ItemRarity.legendary ? ItemRarity.legendary : ItemRarity.values[item.rarity.index + 1], // Increase rarity
+      value: item.value + 50 + (random.nextInt(50)), // Increase value
+      identified: true, // Enchanted items are always identified
+      statModifiers: enhancedStats,
+      specialEffects: item.specialEffects,
+      stackSize: item.stackSize,
+    );
+    
+    // Replace the item in player's inventory
+    final itemIndex = widget.player.inventory.indexOf(item);
+    if (itemIndex >= 0) {
+      widget.player.inventory[itemIndex] = enhancedItem;
+      
+      // If the item was equipped, update equipment
+      for (final slot in widget.player.equipment.keys) {
+        if (widget.player.equipment[slot] == item) {
+          widget.player.equipment[slot] = enhancedItem;
+          break;
+        }
       }
     }
     
-    widget.onPlayerUpdate(widget.player);
-    _showServiceResult(identifiedCount > 0 
-        ? 'Identified $identifiedCount items!' 
-        : 'No unidentified items found.');
-  }
-
-  void _learnSpells() {
-    widget.player.spendMoney(30);
-    widget.player.knownSpells.add('Magic Missile'); // Example spell
-    widget.onPlayerUpdate(widget.player);
-    _showServiceResult('You\'ve learned a new spell!');
-  }
-
-  void _enchantItems() {
-    widget.player.spendMoney(75);
-    widget.onPlayerUpdate(widget.player);
-    _showServiceResult('Your equipment glows with magical energy!');
+    _showServiceResult('Your ${item.displayName} has been successfully enchanted with $enchantmentName! It now ${enchantmentDescription}.');
   }
 
   void _fenceGoods() {

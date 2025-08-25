@@ -1,9 +1,9 @@
 name: dungeondays
-description: A magic-focused ASCII roguelike game
+description: An immersive ASCII roguelike adventure featuring magic, combat, and exploration
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 0.1.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

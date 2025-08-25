@@ -43,18 +43,16 @@ class PlayerStatsBar extends StatelessWidget {
   }
   
   Widget _buildStatGroup(String label, String value, Color color) {
-    return Flexible(
-      child: Text(
-        '$label:$value',
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
+    return Text(
+      '$label:$value',
+      style: TextStyle(
+        color: color,
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'monospace',
       ),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
     );
   }
 }
