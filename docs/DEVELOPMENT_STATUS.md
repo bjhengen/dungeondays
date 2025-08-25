@@ -6,11 +6,11 @@
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Current Version** | v0.1.0+1 | Proof of concept complete |
-| **Platform Builds** | ✅ Ready | Android APK + iOS builds successful |
-| **App Store Status** | 📋 Ready to Submit | All materials prepared |
+| **Current Version** | v0.1.0+1 | Beta deployed to both app stores |
+| **Platform Builds** | ✅ Complete | Android AAB + iOS IPA successfully built |
+| **App Store Status** | 🚀 **BETA LIVE** | TestFlight (iOS) + Google Play Internal Testing |
 | **Core Gameplay** | ✅ Functional | All major systems working |
-| **Known Critical Bugs** | 2 | AAB build + Save system reliability |
+| **Known Critical Bugs** | 0 | All deployment blockers resolved |
 | **Mobile Optimization** | 🟡 Partial | Basic touch support, needs improvement |
 
 ## **🚀 Recent Accomplishments**
@@ -24,13 +24,13 @@
 - ✅ **Mobile UI** - Touch-optimized interface, responsive design
 - ✅ **App Store Preparation** - Builds ready, store materials created
 
-### **Recent Bug Fixes (This Session):**
-1. **Light Spells Now Work** - Added active effects system, light properly increases vision
-2. **Combat Navigation Fixed** - Items/scrolls no longer exit combat screen
-3. **Identify Scrolls Interactive** - Players can now choose which item to identify
-4. **Bow Equipment Slots** - Separate slots for ranged weapons and ammunition
-5. **Mobile Button Positioning** - Fixed overlap with Android navigation bar
-6. **Roaming Monsters Added** - 5 monster types now spawn in wilderness for combat testing
+### **Recent Accomplishments (This Session):**
+1. **iOS App Store Deployment** - Created distribution certificate, provisioning profiles, properly signed IPA
+2. **Android App Store Deployment** - Created release keystore, configured signing, built signed AAB
+3. **Beta Testing Live** - Successfully deployed to TestFlight (iOS) and Google Play Internal Testing
+4. **Code Signing Resolution** - Fixed all certificate and entitlement issues for both platforms
+5. **Bundle Configuration** - Updated bundle IDs to com.friendlyrobots.dungeondays for FriendlyRobots LLC
+6. **Store Materials Complete** - Privacy policy, terms of service, app descriptions ready
 
 ## **🏗️ Current Architecture**
 
@@ -80,19 +80,20 @@ lib/
 ## **📱 Platform Status**
 
 ### **Android:**
-- **Status**: ✅ Ready for Distribution
-- **Build Type**: Release APK (49.1MB)
+- **Status**: 🚀 **BETA LIVE** (Google Play Internal Testing)
+- **Build Type**: Release AAB (40.6MB) - Properly signed with release keystore
 - **Target SDK**: 34 (Android 14)
 - **Min SDK**: 23 (Android 6.0)
-- **Known Issues**: AAB build fails (Google Play prefers AAB over APK)
-- **Store Materials**: Complete (descriptions, privacy policy, terms)
+- **Bundle ID**: com.friendlyrobots.dungeondays
+- **Store Materials**: Complete and published
 
 ### **iOS:**
-- **Status**: ✅ Build Ready
-- **Build Type**: Release .app (16.1MB)
+- **Status**: 🚀 **BETA LIVE** (TestFlight)
+- **Build Type**: Release IPA (6.9MB) - Signed with distribution certificate
 - **Target Version**: iOS 12+
-- **Known Issues**: Need Apple Developer account for distribution
-- **Store Materials**: Complete, needs App Store Connect setup
+- **Bundle ID**: com.friendlyrobots.dungeondays
+- **Certificates**: Distribution certificate and App Store provisioning profile configured
+- **Store Materials**: Complete and published
 
 ### **Cross-Platform:**
 - **UI Responsiveness**: Works on different screen sizes
@@ -168,16 +169,16 @@ lib/
 ## **🔮 Next Session Priorities**
 
 ### **Immediate (Next 1-2 Sessions):**
-1. **Fix Critical Bugs** - AAB build, save system reliability
-2. **User Testing** - Get feedback from external testers
-3. **Tutorial System** - Create basic onboarding flow
-4. **Settings Menu** - Add basic user preferences
+1. **Beta Feedback Collection** - Monitor TestFlight and Google Play Console for user feedback
+2. **Bug Triage** - Address any critical issues found by beta testers
+3. **Tutorial System** - Create basic onboarding flow for new players
+4. **Settings Menu** - Add basic user preferences and accessibility options
 
 ### **Short Term (Next 1-2 Weeks):**
-1. **App Store Submission** - Complete upload process
-2. **Performance Optimization** - Profile and improve performance
-3. **Additional Content** - More monsters, spells, locations
-4. **Quality of Life** - Better inventory management, UI improvements
+1. **Production Release** - Move from beta to public app store release
+2. **Performance Optimization** - Profile and improve performance based on beta feedback
+3. **Additional Content** - More monsters, spells, locations based on user requests
+4. **Quality of Life** - Better inventory management, UI improvements from beta feedback
 
 ### **Medium Term (Next Month):**
 1. **User Feedback Integration** - Respond to early user reports

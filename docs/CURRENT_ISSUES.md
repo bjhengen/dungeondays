@@ -5,21 +5,28 @@
 ## **🔥 Critical Bugs**
 
 ### **Issue #1: Android App Bundle Build Failure**
-- **Status**: Open
+- **Status**: Fixed ✅ (August 25, 2024)
 - **Priority**: High
 - **Description**: `flutter build appbundle --release` fails with "failed to strip debug symbols from native libraries"
-- **Impact**: Cannot upload to Google Play Store (AAB format required)
-- **Workaround**: APK builds work, but Google Play prefers AAB
-- **Next Steps**: Fix Android SDK command-line tools, accept licenses
-- **Files Affected**: `android/app/build.gradle.kts`
+- **Solution**: Created release keystore and configured proper signing in build.gradle.kts
+- **Impact**: AAB now builds successfully and uploads to Google Play Store
+- **Files Changed**: `android/app/build.gradle.kts`, `android/key.properties`, created `android/app-release-key.jks`
 
 ### **Issue #2: Save Game Reliability**
 - **Status**: Open
-- **Priority**: High
+- **Priority**: Medium (lowered - not blocking beta deployment)
 - **Description**: No multiple save slots, risk of save corruption
 - **Impact**: Players can lose progress
 - **Details**: Currently uses shared preferences, needs robust file-based saves
-- **Next Steps**: Implement multiple save slots with backup/recovery
+- **Next Steps**: Implement multiple save slots with backup/recovery (post-beta feedback)
+
+### **Issue #22: iOS App Store Code Signing**
+- **Status**: Fixed ✅ (August 25, 2024)
+- **Priority**: Critical
+- **Description**: Multiple iOS deployment issues: missing provisioning profile, invalid signatures, missing entitlements
+- **Solution**: Created distribution certificate, App Store provisioning profile, proper entitlements file, signed all frameworks
+- **Impact**: iOS app now successfully deployed to TestFlight
+- **Files Changed**: Created `ios/Runner/Runner.entitlements`, `ios/Runner/ExportOptions.plist`, configured certificates
 
 ## **🐛 Confirmed Bugs**
 

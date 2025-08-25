@@ -1,0 +1,39 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to App Store Connect"
+  lane :release do
+    # Build the app for the App Store
+    build_app(
+      scheme: "Runner",
+      workspace: "Runner.xcworkspace",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.friendlyrobots.dungeondays" => "match AppStore com.friendlyrobots.dungeondays"
+        }
+      }
+    )
+    
+    # Upload to App Store Connect
+    upload_to_app_store(
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: false
+    )
+  end
+
+  desc "Build for App Store (without upload)"
+  lane :build_only do
+    build_app(
+      scheme: "Runner",
+      workspace: "Runner.xcworkspace",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.friendlyrobots.dungeondays" => "match AppStore com.friendlyrobots.dungeondays"
+        }
+      }
+    )
+  end
+end
